@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nebulytics — Inteligencia Predictiva para Tiendanube</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ─── RESET ─────────────────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:#04050d;color:#e2e8f8;font-size:13px;line-height:1.6}
+button,input,textarea{font-family:'DM Sans',sans-serif}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(127,119,221,0.25);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:rgba(127,119,221,0.45)}
+
+/* ─── VARIABLES ─────────────────────────────────────────── */
+:root{
+  --bg:#04050d; --bg-card:#080c18; --bg-surface:#0d1120; --bg-elevated:#121828;
+  --border:rgba(99,179,237,0.08); --border-glow:rgba(127,119,221,0.3);
+  --purple:#7F77DD; --teal:#1D9E75; --amber:#BA7517; --coral:#D85A30; --blue:#378ADD;
+  --t1:#e2e8f8; --t2:#94a3b8; --t3:#475569;
+}
+
+/* ─── LAYOUT ─────────────────────────────────────────────── */
+#app{display:flex;flex-direction:column;height:100vh}
+.topbar{height:52px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:16px;flex-shrink:0;z-index:10}
+.body{flex:1;display:flex;overflow:hidden}
+.sidebar{width:168px;background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.main{flex:1;display:flex;overflow:hidden}
+.dash{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+.chat-pane{width:410px;flex-shrink:0;border-left:1px solid var(--border);display:flex;flex-direction:column;background:var(--bg-card)}
+
+/* ─── TOPBAR ─────────────────────────────────────────────── */
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.15rem;background:linear-gradient(90deg,var(--purple),#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-0.02em}
+.store-pill{font-size:11px;color:var(--t2);background:var(--bg-surface);border:1px solid var(--border);padding:3px 10px;border-radius:20px}
+.sync-dot{display:flex;align-items:center;gap:5px;font-size:10px;color:#3B6D11;font-family:'Space Mono',monospace}
+.sync-dot::before{content:'';width:5px;height:5px;background:#639922;border-radius:50%;animation:pulse 2.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.tb-spacer{flex:1}
+.tb-btn{background:transparent;border:1px solid var(--border-glow);border-radius:7px;padding:5px 12px;cursor:pointer;color:var(--t2);font-size:11px;display:flex;align-items:center;gap:5px;transition:all 0.15s;position:relative}
+.tb-btn:hover{border-color:var(--purple);color:var(--purple);background:rgba(127,119,221,0.06)}
+.tb-badge{position:absolute;top:-5px;right:-5px;width:16px;height:16px;background:#E24B4A;border-radius:50%;font-size:9px;color:white;display:flex;align-items:center;justify-content:center;font-weight:700}
+
+/* ─── SIDEBAR ────────────────────────────────────────────── */
+.sb-head{padding:14px 12px 10px;border-bottom:1px solid var(--border)}
+.sb-label{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);font-family:'Space Mono',monospace}
+.sb-nav{flex:1;padding:8px}
+.nav-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:8px 10px;border:none;border-radius:7px;background:transparent;color:var(--t2);font-size:12px;cursor:pointer;text-align:left;transition:all .15s;margin-bottom:2px;font-family:'DM Sans',sans-serif}
+.nav-btn:hover{background:rgba(127,119,221,0.07);color:var(--purple)}
+.nav-btn.active{background:rgba(127,119,221,0.12);color:var(--purple);font-weight:500}
+.nav-badge{background:#E24B4A;color:white;border-radius:20px;padding:1px 5px;font-size:9px;font-weight:700}
+.sb-foot{padding:10px 12px;border-top:1px solid var(--border);font-size:9px;color:var(--t3);font-family:'Space Mono',monospace;line-height:1.8}
+
+/* ─── TABS ───────────────────────────────────────────────── */
+.tab-bar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg-card);padding:0 14px}
+.tab-btn{padding:9px 14px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--t3);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;margin-bottom:-1px;letter-spacing:.02em}
+.tab-btn:hover{color:var(--t2)}
+.tab-btn.active{color:var(--purple);border-bottom-color:var(--purple)}
+.tab-content{display:none;flex-direction:column;gap:12px}
+.tab-content.active{display:flex}
+
+/* ─── CARDS ──────────────────────────────────────────────── */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.card:hover{border-color:rgba(127,119,221,0.15)}
+.card-title{font-family:'Syne',sans-serif;font-weight:700;font-size:12px;color:var(--t1);margin-bottom:12px;letter-spacing:-.01em}
+.card-row{display:grid;gap:10px}
+.card-2{grid-template-columns:1fr 1fr}
+.card-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+
+/* ─── KPI CARDS ──────────────────────────────────────────── */
+.kpi{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px;transition:border-color .2s}
+.kpi:hover{border-color:rgba(127,119,221,0.2)}
+.kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);margin-bottom:6px}
+.kpi-val{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;line-height:1;margin-bottom:5px}
+.kpi-sub{font-size:11px;color:var(--t3)}
+.kpi-sub.up{color:#3B6D11}
+.kpi-sub.dn{color:#A32D2D}
+
+/* ─── CHART CONTAINERS ───────────────────────────────────── */
+.chart-wrap{position:relative;height:210px}
+.chart-sm{height:160px}
+.chart-xs{height:130px}
+
+/* ─── TABLES ─────────────────────────────────────────────── */
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);padding:7px 8px;text-align:left;border-bottom:1px solid var(--border);font-weight:400;white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:12px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.01)}
+.mono{font-family:'Space Mono',monospace;font-size:11px}
+
+/* ─── BADGES ─────────────────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;white-space:nowrap}
+.b-crit{background:rgba(162,45,45,0.12);color:#F09595;border:1px solid rgba(162,45,45,0.2)}
+.b-warn{background:rgba(133,79,11,0.12);color:#FAC775;border:1px solid rgba(133,79,11,0.2)}
+.b-ok  {background:rgba(59,109,17,0.12);color:#97C459;border:1px solid rgba(59,109,17,0.2)}
+.b-over{background:rgba(83,74,183,0.12);color:#AFA9EC;border:1px solid rgba(83,74,183,0.2)}
+.b-info{background:rgba(24,95,165,0.12);color:#85B7EB;border:1px solid rgba(24,95,165,0.2)}
+
+/* ─── ALERTS ─────────────────────────────────────────────── */
+.alert-item{padding:12px 14px;border-radius:8px;margin-bottom:8px;border:1px solid}
+.a-crit{background:rgba(162,45,45,0.05);border-color:rgba(240,149,149,0.18)}
+.a-warn{background:rgba(133,79,11,0.05);border-color:rgba(250,199,117,0.18)}
+.a-info{background:rgba(24,95,165,0.05);border-color:rgba(133,183,235,0.18)}
+.alert-title{font-weight:500;font-size:12px;display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.alert-msg{font-size:11px;color:var(--t2);line-height:1.6;padding-left:15px}
+.sdot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.sd-crit{background:#E24B4A} .sd-warn{background:#EF9F27} .sd-info{background:#378ADD}
+
+/* ─── LEGEND ─────────────────────────────────────────────── */
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2)}
+.leg-dot{width:8px;height:8px;border-radius:50%}
+.leg-dash{width:16px;height:0;border-top:2px dashed;opacity:.7}
+
+/* ─── SEGMENT COLORS ─────────────────────────────────────── */
+.c-champ{color:#AFA9EC} .c-loyal{color:#5DCAA5} .c-risk{color:#EF9F27} .c-lost{color:#F09595}
+
+/* ─── PROGRESS BAR ───────────────────────────────────────── */
+.prog-wrap{width:44px;height:3px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden}
+.prog-bar{height:100%;border-radius:2px}
+
+/* ─── CHAT ───────────────────────────────────────────────── */
+.chat-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.neb-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--purple),#a78bfa);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0}
+.neb-name{font-weight:500;font-size:13px}
+.neb-status{font-size:10px;color:#3B6D11;display:flex;align-items:center;gap:4px}
+.neb-status::before{content:'';width:5px;height:5px;background:#639922;border-radius:50%}
+.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.msg-row{display:flex;gap:8px;align-items:flex-start}
+.msg-row.u{flex-direction:row-reverse}
+.msg-av{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;margin-top:2px}
+.msg-av.n{background:linear-gradient(135deg,var(--purple),#a78bfa);color:white}
+.msg-av.u{background:rgba(56,189,248,0.14);color:#38bdf8}
+.msg-bub{max-width:83%;padding:9px 12px;border-radius:10px;font-size:12px;line-height:1.68}
+.msg-bub.n{background:var(--bg-surface);border:1px solid var(--border)}
+.msg-bub.u{background:rgba(127,119,221,0.1);border:1px solid rgba(127,119,221,0.18);color:#c4b5fd}
+.msg-bub strong{color:#86efac;font-weight:500}
+.msg-bub code{font-family:'Space Mono',monospace;font-size:10px;background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px}
+.msg-num{font-family:'Space Mono',monospace;color:var(--purple)}
+/* Inline chart inside chat bubble */
+.ic-wrap{margin:10px 0 2px;background:var(--bg-elevated);border-radius:8px;padding:10px 12px;border:1px solid var(--border)}
+.ic-title{font-size:9px;font-family:'Space Mono',monospace;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+/* Typing */
+.dots{display:flex;gap:4px;padding:4px 2px}
+.dots span{width:6px;height:6px;border-radius:50%;background:var(--t3);animation:bop 1.4s ease-in-out infinite}
+.dots span:nth-child(2){animation-delay:.18s}
+.dots span:nth-child(3){animation-delay:.36s}
+@keyframes bop{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+/* Quick prompts */
+.qp-bar{padding:10px 12px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:5px}
+.qp{padding:4px 10px;background:transparent;border:1px solid var(--border-glow);border-radius:20px;color:var(--t2);font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.qp:hover{border-color:var(--purple);color:var(--purple);background:rgba(127,119,221,0.06)}
+/* Input */
+.chat-in{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0}
+.in-field{flex:1;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--t1);font-size:12px;resize:none;outline:none;line-height:1.5;max-height:80px}
+.in-field::placeholder{color:var(--t3)}
+.in-field:focus{border-color:rgba(127,119,221,0.35)}
+.send{width:36px;height:36px;background:var(--purple);border:none;border-radius:8px;cursor:pointer;color:white;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .2s}
+.send:hover{opacity:.85}
+.send:disabled{opacity:.35;cursor:default}
+
+/* ─── MODAL ──────────────────────────────────────────────── */
+.modal-ov{position:fixed;inset:0;background:rgba(4,5,13,0.97);display:flex;align-items:center;justify-content:center;z-index:999;backdrop-filter:blur(12px)}
+.modal-box{background:var(--bg-card);border:1px solid var(--border-glow);border-radius:16px;padding:38px;max-width:440px;width:90%}
+.m-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;background:linear-gradient(90deg,var(--purple),#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px;letter-spacing:-.02em}
+.m-sub{color:var(--t2);font-size:13px;margin-bottom:26px;line-height:1.65}
+.m-label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:7px;font-family:'Space Mono',monospace}
+.m-input{width:100%;background:var(--bg-surface);border:1px solid var(--border-glow);border-radius:8px;padding:11px 14px;color:var(--t1);font-size:13px;font-family:'Space Mono',monospace;outline:none;transition:border-color .2s;letter-spacing:.03em}
+.m-input:focus{border-color:var(--purple)}
+.m-btn{width:100%;margin-top:14px;padding:12px;background:linear-gradient(135deg,var(--purple),#9333ea);border:none;border-radius:8px;color:white;font-size:13px;font-weight:500;font-family:'Syne',sans-serif;cursor:pointer;transition:opacity .2s;letter-spacing:.01em}
+.m-btn:hover{opacity:.88}
+.m-hint{margin-top:14px;font-size:11px;color:var(--t3);text-align:center;line-height:1.7}
+.m-hint a{color:var(--purple);text-decoration:none}
+.m-err{color:#F09595;font-size:11px;margin-top:8px;display:none}
+
+/* ─── STRATEGY PILLS ─────────────────────────────────────── */
+.strat-item{padding:9px 11px;border-radius:7px;border-left:3px solid;margin-bottom:8px;border-top:1px solid;border-right:1px solid;border-bottom:1px solid}
+.strat-name{font-weight:500;font-size:11px;margin-bottom:3px}
+.strat-text{font-size:11px;color:var(--t2);line-height:1.55}
+
+/* ─── ANIMATIONS ─────────────────────────────────────────── */
+@keyframes fin{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.msg-row{animation:fin .2s ease both}
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
+@media(max-width:960px){.sidebar{display:none}.chat-pane{width:360px}}
+@media(max-width:680px){.chat-pane{display:none}.card-4{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<!-- ════════ MODAL ════════════════════════════════════════ -->
+<div class="modal-ov" id="modal">
+  <div class="modal-box">
+    <div class="m-logo">Nebulytics</div>
+    <div class="m-sub">Plataforma de inteligencia predictiva con IA para tiendas Tiendanube.<br>Necesitás una API key de Anthropic para activar Nebula IA.</div>
+    <div class="m-label">Anthropic API Key</div>
+    <input type="password" class="m-input" id="api-key-input" placeholder="sk-ant-api03-..." autocomplete="off">
+    <div class="m-err" id="m-err">La key debe comenzar con <code>sk-ant-</code></div>
+    <button class="m-btn" onclick="activateApp()">Activar Nebulytics →</button>
+    <div class="m-hint">
+      Tu key se guarda únicamente en este navegador (localStorage).<br>
+      <a href="https://console.anthropic.com/settings/keys" target="_blank">Obtener API key gratuita ↗</a>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ APP ══════════════════════════════════════════ -->
+<div id="app" style="display:none;flex-direction:column;height:100vh">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="logo">Nebulytics</div>
+    <div class="store-pill">Modo Urban</div>
+    <div class="sync-dot">Sync hace 12 min</div>
+    <div class="tb-spacer"></div>
+    <button class="tb-btn" onclick="switchTab('alerts')">
+      🔔 Alertas
+      <span class="tb-badge" id="alert-count">2</span>
+    </button>
+    <button class="tb-btn" style="font-family:'Space Mono',monospace;font-size:10px" onclick="resetKey()">⚙ API Key</button>
+  </div>
+
+  <div class="body">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sb-head"><div class="sb-label">Panel</div></div>
+      <nav class="sb-nav">
+        <button class="nav-btn active" id="nav-overview"    onclick="switchTab('overview')">📊 Overview</button>
+        <button class="nav-btn"        id="nav-predictions" onclick="switchTab('predictions')">📈 Predicciones</button>
+        <button class="nav-btn"        id="nav-customers"   onclick="switchTab('customers')">👥 Clientes</button>
+        <button class="nav-btn"        id="nav-inventory"   onclick="switchTab('inventory')">📦 Inventario</button>
+        <button class="nav-btn"        id="nav-alerts"      onclick="switchTab('alerts')">
+          🔔 Alertas <span class="nav-badge">2</span>
+        </button>
+      </nav>
+      <div class="sb-foot">Prophet · K-Means<br>LightGBM · Claude API<br>Tiendanube</div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+
+      <!-- DASHBOARD -->
+      <div class="dash" id="dash">
+
+        <!-- ── OVERVIEW ───────────────────────────────────── -->
+        <div class="tab-content active" id="tab-overview">
+          <div class="card-row card-4">
+            <div class="kpi">
+              <div class="kpi-label">Ingresos (30d)</div>
+              <div class="kpi-val" style="color:var(--purple)">$1.043K</div>
+              <div class="kpi-sub up">▲ +12.4% vs mes anterior</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Órdenes (30d)</div>
+              <div class="kpi-val" style="color:var(--teal)">1.534</div>
+              <div class="kpi-sub up">▲ +8.7% vs mes anterior</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Ticket promedio</div>
+              <div class="kpi-val">$680</div>
+              <div class="kpi-sub up">▲ +3.4% vs mes anterior</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Proyección (30d)</div>
+              <div class="kpi-val" style="color:var(--amber)">$1.138K</div>
+              <div class="kpi-sub up">▲ +9.1% potencial</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Ingresos reales vs proyección — Modelo Prophet</div>
+            <div class="chart-wrap"><canvas id="c-revenue"></canvas></div>
+            <div class="legend">
+              <div class="leg-item"><div class="leg-dot" style="background:var(--purple)"></div>Real</div>
+              <div class="leg-item"><div class="leg-dash" style="border-color:var(--teal)"></div>Proyección</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Productos — Vendido vs Predicción (unidades / mes)</div>
+            <div class="chart-wrap chart-sm"><canvas id="c-prods"></canvas></div>
+          </div>
+        </div>
+
+        <!-- ── PREDICTIONS ────────────────────────────────── -->
+        <div class="tab-content" id="tab-predictions">
+          <div class="card-row card-4">
+            <div class="kpi"><div class="kpi-label">Ingresos proyectados</div><div class="kpi-val" style="color:var(--teal)">$1.138K</div><div class="kpi-sub up">▲ +9.1%</div></div>
+            <div class="kpi"><div class="kpi-label">Órdenes proyectadas</div><div class="kpi-val" style="color:var(--purple)">1.672</div><div class="kpi-sub up">▲ +8.9%</div></div>
+            <div class="kpi"><div class="kpi-label">Productos en alza</div><div class="kpi-val" style="color:var(--teal)">5</div><div class="kpi-sub up">Demanda creciente</div></div>
+            <div class="kpi"><div class="kpi-label">Stock crítico</div><div class="kpi-val" style="color:var(--coral)">2</div><div class="kpi-sub dn">▼ Acción urgente</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Tabla de predicciones — Modelo Prophet v1 (confianza 74–87%)</div>
+            <table><thead><tr><th>Producto</th><th>Vendido</th><th>Predicción</th><th>Variación</th><th>Stock</th><th>Confianza</th><th>Estado</th></tr></thead>
+            <tbody id="t-pred"></tbody></table>
+          </div>
+          <div class="card">
+            <div class="card-title">Proyección semanal de demanda — Prophet</div>
+            <div class="chart-wrap chart-xs"><canvas id="c-demand"></canvas></div>
+          </div>
+        </div>
+
+        <!-- ── CUSTOMERS ──────────────────────────────────── -->
+        <div class="tab-content" id="tab-customers">
+          <div class="card-row card-4">
+            <div class="kpi"><div class="kpi-label">Champions</div><div class="kpi-val c-champ">89</div><div class="kpi-sub">LTV $18.400</div></div>
+            <div class="kpi"><div class="kpi-label">Leales</div><div class="kpi-val c-loyal">234</div><div class="kpi-sub">LTV $9.200</div></div>
+            <div class="kpi"><div class="kpi-label">En Riesgo</div><div class="kpi-val c-risk">198</div><div class="kpi-sub dn">54d sin comprar</div></div>
+            <div class="kpi"><div class="kpi-label">Perdidos</div><div class="kpi-val c-lost">234</div><div class="kpi-sub dn">142d sin comprar</div></div>
+          </div>
+          <div class="card-row card-2">
+            <div class="card">
+              <div class="card-title">Distribución RFM — K-Means clustering</div>
+              <div class="chart-wrap chart-sm"><canvas id="c-segs"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Estrategias recomendadas</div>
+              <div id="strategies"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Segmentos RFM detalle</div>
+            <table><thead><tr><th>Segmento</th><th>Clientes</th><th>%</th><th>LTV Prom.</th><th>Ticket</th><th>Última compra</th></tr></thead>
+            <tbody id="t-segs"></tbody></table>
+          </div>
+        </div>
+
+        <!-- ── INVENTORY ──────────────────────────────────── -->
+        <div class="tab-content" id="tab-inventory">
+          <div class="card-row card-4">
+            <div class="kpi" style="text-align:center"><div class="kpi-val" style="color:#E24B4A">2</div><div class="kpi-sub" style="color:#F09595">CRÍTICO</div></div>
+            <div class="kpi" style="text-align:center"><div class="kpi-val" style="color:#EF9F27">2</div><div class="kpi-sub" style="color:#FAC775">ATENCIÓN</div></div>
+            <div class="kpi" style="text-align:center"><div class="kpi-val" style="color:#639922">2</div><div class="kpi-sub" style="color:#97C459">NORMAL</div></div>
+            <div class="kpi" style="text-align:center"><div class="kpi-val" style="color:var(--purple)">2</div><div class="kpi-sub" style="color:#AFA9EC">EXCESO</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Días de stock disponibles por producto</div>
+            <div class="chart-wrap chart-sm"><canvas id="c-inv"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Inventario detallado</div>
+            <table><thead><tr><th>Producto</th><th>Stock</th><th>Demanda/día</th><th>Días stock</th><th>Estado</th><th>Acción recomendada</th></tr></thead>
+            <tbody id="t-inv"></tbody></table>
+          </div>
+        </div>
+
+        <!-- ── ALERTS ─────────────────────────────────────── -->
+        <div class="tab-content" id="tab-alerts">
+          <div id="alerts-list"></div>
+        </div>
+
+      </div><!-- /dash -->
+
+      <!-- CHAT PANE -->
+      <div class="chat-pane">
+        <div class="chat-head">
+          <div class="neb-avatar">N</div>
+          <div>
+            <div class="neb-name">Nebula IA</div>
+            <div class="neb-status">En línea · conectada a tus datos</div>
+          </div>
+        </div>
+
+        <div class="chat-msgs" id="chat-msgs"></div>
+
+        <div class="qp-bar" id="qp-bar">
+          <button class="qp" onclick="qp(this)">¿Qué productos reponer urgente?</button>
+          <button class="qp" onclick="qp(this)">¿Cuáles se venderán más el próximo mes?</button>
+          <button class="qp" onclick="qp(this)">¿Qué promoción debería hacer?</button>
+          <button class="qp" onclick="qp(this)">Clientes en riesgo de churn</button>
+          <button class="qp" onclick="qp(this)">Reporte ejecutivo del mes</button>
+          <button class="qp" onclick="qp(this)">¿Por qué bajaron las ventas?</button>
+        </div>
+
+        <div class="chat-in">
+          <textarea class="in-field" id="chat-in" rows="2" placeholder="Preguntá sobre ventas, stock, clientes o pedí análisis..."></textarea>
+          <button class="send" id="send-btn" onclick="send()">↑</button>
+        </div>
+      </div>
+
+    </div><!-- /main -->
+  </div><!-- /body -->
+</div><!-- /app -->
+
+<script>
+// ════════════════════════════════════════════════════════════
+// 1. DATA
+// ════════════════════════════════════════════════════════════
+const PRODS = [
+  {name:"Remera Básica Blanca",cat:"Remeras",sold:312,pred:368,stock:24,risk:"warning",cf:87},
+  {name:"Jean Slim Fit",       cat:"Pantalones",sold:241,pred:298,stock:8, risk:"critical",cf:81},
+  {name:"Campera Oversize",    cat:"Camperas",sold:198,pred:187,stock:142,risk:"overstock",cf:78},
+  {name:"Vestido Casual",      cat:"Vestidos",sold:187,pred:225,stock:56, risk:"ok",cf:84},
+  {name:"Zapatillas Urbanas",  cat:"Calzado",sold:163,pred:204,stock:31, risk:"ok",cf:79},
+  {name:"Buzo Canguro",        cat:"Buzos",sold:149,pred:142,stock:78, risk:"ok",cf:82},
+  {name:"Falda Midi",          cat:"Faldas",sold:98,pred:76, stock:234,risk:"overstock",cf:74},
+  {name:"Short Deportivo",     cat:"Shorts",sold:87,pred:143,stock:19, risk:"critical",cf:86},
+];
+
+const SEGS = [
+  {name:"Champions",count:89,pct:12,ltv:18400,ticket:3200,recency:8, color:"#7F77DD",strategy:"Programa VIP + acceso anticipado. Sin descuentos, preservar margen alto."},
+  {name:"Leales",    count:234,pct:31,ltv:9200,ticket:1800,recency:21,color:"#1D9E75",strategy:"Programa de puntos para elevarlos a Champions. Recompensas por frecuencia."},
+  {name:"En Riesgo", count:198,pct:26,ltv:4100,ticket:1100,recency:54,color:"#BA7517",strategy:"Email personalizado + descuento 10-15% en su categoría favorita urgente."},
+  {name:"Perdidos",  count:234,pct:31,ltv:1200,ticket:680, recency:142,color:"#D85A30",strategy:"Winback agresivo 20-25% off si LTV > $2.000. Evaluar costo de reactivación."},
+];
+
+const ALERTS_DATA = [
+  {sev:"critical",title:"Stock crítico — Jean Slim Fit",msg:"Quedan 8 uds. Demanda proyectada 298/mes (3.8/día). Se agota en 2 días. Reponer 80+ uds urgente."},
+  {sev:"critical",title:"Stock crítico — Short Deportivo",msg:"Quedan 19 uds. Demanda creciente +64%. Se agota en 4 días. Temporada alta deportiva."},
+  {sev:"warning",title:"Exceso de stock — Campera Oversize",msg:"142 uds con demanda proyectada de 187/mes. Stock para 22 meses. Descuento 20% recomendado."},
+  {sev:"warning",title:"Exceso de stock — Falda Midi",msg:"234 uds con baja demanda (76/mes). Bundle con Remera o liquidación estacional."},
+  {sev:"info",title:"Oportunidad — Zapatillas Urbanas",msg:"Demanda +25% vs mes anterior. Asegurá stock y activá campaña para capitalizar el momento."},
+  {sev:"info",title:"12 carritos Champions sin recuperar",msg:"Carritos >$8.000 de clientes Champions. Un cupón del 5% puede recuperar ~$96.000 ARS."},
+];
+
+const INV = [
+  {name:"Jean Slim Fit",      stock:8,  daily:3.8,days:2,  risk:"critical",action:"Reponer 80+ uds YA"},
+  {name:"Short Deportivo",    stock:19, daily:4.1,days:4,  risk:"critical",action:"Reponer 60+ uds urgente"},
+  {name:"Remera Básica Blanca",stock:24,daily:2.9,days:8,  risk:"warning", action:"Comprar 40 uds esta semana"},
+  {name:"Zapatillas Urbanas", stock:31, daily:2.4,days:12, risk:"warning", action:"Comprar 30 uds"},
+  {name:"Vestido Casual",     stock:56, daily:2.1,days:26, risk:"ok",      action:"OK por ahora"},
+  {name:"Buzo Canguro",       stock:78, daily:1.8,days:43, risk:"ok",      action:"OK por ahora"},
+  {name:"Campera Oversize",   stock:142,daily:0.9,days:157,risk:"overstock",action:"Descuento 20% o bundle"},
+  {name:"Falda Midi",         stock:234,daily:0.7,days:334,risk:"overstock",action:"Liquidación o bundle"},
+];
+
+const REV = [
+  {d:"12/2",a:22400},{d:"14/2",a:28100},{d:"16/2",a:24300},{d:"18/2",a:42100},
+  {d:"20/2",a:29500},{d:"22/2",a:31800},{d:"24/2",a:45300},{d:"26/2",a:35600},
+  {d:"28/2",a:28900},{d:"2/3",a:38400},{d:"4/3",a:51200},{d:"6/3",a:33800},
+  {d:"8/3",a:41700},{d:"10/3",a:38900},{d:"12/3",a:45100},{d:"13/3",a:39600},
+  {d:"15/3",p:42000},{d:"17/3",p:51800},{d:"19/3",p:48600},{d:"21/3",p:53700},
+  {d:"23/3",p:59300},{d:"25/3",p:61200},{d:"27/3",p:63900},{d:"29/3",p:65400},
+];
+
+// ════════════════════════════════════════════════════════════
+// 2. STATE
+// ════════════════════════════════════════════════════════════
+let S = { apiKey:'', history:[], streaming:false, charts:{}, chatN:0 };
+
+// ════════════════════════════════════════════════════════════
+// 3. SYSTEM PROMPT
+// ════════════════════════════════════════════════════════════
+const SYS = `Sos Nebula, el asesor de negocio IA de Modo Urban en Tiendanube. Español rioplatense, tono profesional y directo. Máx 160 palabras de texto. Sé específico y accionable siempre.
+
+DATOS MODO URBAN (moda femenina/unisex, Buenos Aires):
+${JSON.stringify({
+  metricas:{ingresos_30d:1043200,var_pct:12.4,ordenes_30d:1534,ticket:680,abandono_carrito:71.2,proyeccion_30d:1138000},
+  productos:PRODS,segmentos:SEGS,inventario:INV,alertas_criticas:2
+},null,1)}
+
+COMANDOS QUE PODÉS INCLUIR AL FINAL DE TU RESPUESTA (opcionales, solo cuando sumen):
+
+Para renderizar un gráfico inline en el chat:
+[CHART:{"type":"bar","title":"Título","labels":["A","B","C"],"datasets":[{"label":"Serie","data":[100,200,150],"color":"#7F77DD"}]}]
+
+Para cambiar la vista del dashboard (cuando estás discutiendo esa sección):
+[VIEW:overview] [VIEW:predictions] [VIEW:customers] [VIEW:inventory] [VIEW:alerts]
+
+Tipos de chart válidos: bar, line, pie, doughnut, horizontalBar
+Solo 1 chart por respuesta. No uses comandos si no agregan valor real.`;
+
+// ════════════════════════════════════════════════════════════
+// 4. CHART UTILITIES
+// ════════════════════════════════════════════════════════════
+const CD = {
+  plugins:{
+    legend:{labels:{color:'#94a3b8',font:{size:10,family:"'DM Sans',sans-serif"},boxWidth:9,padding:12}},
+    tooltip:{backgroundColor:'#080c18',borderColor:'rgba(127,119,221,0.2)',borderWidth:1,
+             titleColor:'#e2e8f8',bodyColor:'#94a3b8',padding:10,cornerRadius:6}
+  },
+  scales:{
+    x:{ticks:{color:'#475569',font:{size:9}},grid:{color:'rgba(255,255,255,0.03)'},border:{color:'rgba(255,255,255,0.06)'}},
+    y:{ticks:{color:'#475569',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'},border:{color:'rgba(255,255,255,0.06)'}}
+  }
+};
+
+function killChart(id){ if(S.charts[id]){S.charts[id].destroy();delete S.charts[id];} }
+
+function mkChart(id,cfg){
+  killChart(id);
+  const c=document.getElementById(id);
+  if(!c)return;
+  S.charts[id]=new Chart(c,cfg);
+}
+
+const COLORS=['#7F77DD','#1D9E75','#BA7517','#D85A30','#378ADD','#D4537E','#5DCAA5','#EF9F27'];
+
+function specToChartCfg(spec){
+  const isPie = spec.type==='pie'||spec.type==='doughnut';
+  const isHBar = spec.type==='horizontalBar';
+  const type = isHBar?'bar':spec.type;
+
+  if(isPie){
+    return {type,data:{
+      labels:spec.labels,
+      datasets:spec.datasets.map(ds=>({
+        data:ds.data,
+        backgroundColor:spec.labels.map((_,i)=>COLORS[i%COLORS.length]+'bb'),
+        borderColor:spec.labels.map((_,i)=>COLORS[i%COLORS.length]),
+        borderWidth:1
+      }))
+    },options:{...CD,scales:{},responsive:true,maintainAspectRatio:true,aspectRatio:2,
+      plugins:{...CD.plugins,legend:{...CD.plugins.legend,position:'right'}}}};
+  }
+
+  return {type,data:{
+    labels:spec.labels,
+    datasets:spec.datasets.map((ds,i)=>({
+      label:ds.label||'',
+      data:ds.data,
+      backgroundColor:(ds.color||COLORS[i])+(type==='line'?'15':'bb'),
+      borderColor:ds.color||COLORS[i],
+      borderWidth:type==='line'?2:1,
+      borderRadius:type==='bar'?4:0,
+      fill:type==='line',tension:0.4,pointRadius:type==='line'?2:0,
+      borderDash:ds.dashed?[5,3]:undefined
+    }))
+  },options:{
+    ...CD,indexAxis:isHBar?'y':'x',responsive:true,maintainAspectRatio:true,aspectRatio:1.9,
+    plugins:{...CD.plugins,legend:{...CD.plugins.legend,display:spec.datasets.length>1}}
+  }};
+}
+
+// ════════════════════════════════════════════════════════════
+// 5. DASHBOARD CHARTS INIT
+// ════════════════════════════════════════════════════════════
+function initCharts(){
+  // Revenue
+  mkChart('c-revenue',{type:'line',data:{
+    labels:REV.map(d=>d.d),
+    datasets:[
+      {label:'Real',data:REV.map(d=>d.a||null),borderColor:'#7F77DD',backgroundColor:'rgba(127,119,221,0.07)',borderWidth:2,fill:true,tension:0.4,pointRadius:0,spanGaps:false},
+      {label:'Proyección',data:REV.map(d=>d.p||null),borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.05)',borderWidth:2,borderDash:[5,3],fill:true,tension:0.4,pointRadius:0,spanGaps:false}
+    ]
+  },options:{...CD,responsive:true,maintainAspectRatio:false,
+    plugins:{...CD.plugins,legend:{display:false}},
+    scales:{...CD.scales,y:{...CD.scales.y,ticks:{color:'#475569',font:{size:9},callback:v=>'$'+(v/1000).toFixed(0)+'k'}}}}});
+
+  // Products bar
+  mkChart('c-prods',{type:'bar',data:{
+    labels:PRODS.map(p=>p.name.split(' ').slice(0,2).join(' ')),
+    datasets:[
+      {label:'Vendido',data:PRODS.map(p=>p.sold),backgroundColor:'rgba(127,119,221,0.75)',borderColor:'#7F77DD',borderWidth:1,borderRadius:3},
+      {label:'Predicción',data:PRODS.map(p=>p.pred),backgroundColor:'rgba(29,158,117,0.75)',borderColor:'#1D9E75',borderWidth:1,borderRadius:3}
+    ]
+  },options:{...CD,responsive:true,maintainAspectRatio:false,
+    scales:{...CD.scales,x:{...CD.scales.x,ticks:{color:'#475569',font:{size:8},maxRotation:30}}}}});
+
+  // Demand weekly
+  mkChart('c-demand',{type:'line',data:{
+    labels:['Sem 1','Sem 2','Sem 3','Sem 4','Sem 5','Sem 6','Sem 7','Sem 8'],
+    datasets:[
+      {label:'Real',data:[38400,41700,45300,39600,null,null,null,null],borderColor:'#7F77DD',backgroundColor:'rgba(127,119,221,0.07)',borderWidth:2,fill:true,tension:0.4,pointRadius:3,spanGaps:false},
+      {label:'Proyección Prophet',data:[null,null,null,39600,45000,51800,56400,63900],borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.05)',borderWidth:2,borderDash:[5,3],fill:true,tension:0.4,pointRadius:3,spanGaps:false}
+    ]
+  },options:{...CD,responsive:true,maintainAspectRatio:false}});
+
+  // Segments doughnut
+  mkChart('c-segs',{type:'doughnut',data:{
+    labels:SEGS.map(s=>s.name),
+    datasets:[{data:SEGS.map(s=>s.count),backgroundColor:SEGS.map(s=>s.color+'bb'),borderColor:SEGS.map(s=>s.color),borderWidth:2}]
+  },options:{...CD,scales:{},responsive:true,maintainAspectRatio:false,
+    plugins:{...CD.plugins,legend:{...CD.plugins.legend,position:'bottom'}}}});
+
+  // Inventory horizontal
+  mkChart('c-inv',{type:'bar',data:{
+    labels:INV.map(i=>i.name.split(' ').slice(0,2).join(' ')),
+    datasets:[{
+      label:'Días de stock',
+      data:INV.map(i=>Math.min(i.days,200)),
+      backgroundColor:INV.map(i=>i.risk==='critical'?'rgba(226,75,74,0.75)':i.risk==='warning'?'rgba(239,159,39,0.75)':i.risk==='overstock'?'rgba(127,119,221,0.75)':'rgba(99,153,34,0.75)'),
+      borderColor:INV.map(i=>i.risk==='critical'?'#E24B4A':i.risk==='warning'?'#EF9F27':i.risk==='overstock'?'#7F77DD':'#639922'),
+      borderWidth:1,borderRadius:3
+    }]
+  },options:{...CD,indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    plugins:{...CD.plugins,legend:{display:false}},
+    scales:{...CD.scales,
+      x:{...CD.scales.x,ticks:{color:'#475569',font:{size:9},callback:v=>v+'d'}},
+      y:{...CD.scales.y,ticks:{color:'#475569',font:{size:8}}}}}});
+}
+
+// ════════════════════════════════════════════════════════════
+// 6. RENDER TABLES & LISTS
+// ════════════════════════════════════════════════════════════
+const BADGE = {
+  critical:'<span class="badge b-crit">CRÍTICO</span>',
+  warning: '<span class="badge b-warn">ATENCIÓN</span>',
+  ok:      '<span class="badge b-ok">OK</span>',
+  overstock:'<span class="badge b-over">EXCESO</span>'
+};
+const AC = {critical:'#F09595',warning:'#FAC775',ok:'#97C459',overstock:'#AFA9EC'};
+
+function renderAll(){
+  // Predictions table
+  document.getElementById('t-pred').innerHTML=PRODS.map(p=>{
+    const v=((p.pred-p.sold)/p.sold*100).toFixed(1);
+    return`<tr>
+      <td style="font-weight:500">${p.name}</td>
+      <td class="mono">${p.sold}</td>
+      <td class="mono" style="color:var(--purple)">${p.pred}</td>
+      <td class="mono" style="color:${p.pred>=p.sold?'#3B6D11':'#A32D2D'}">${v>0?'+':''}${v}%</td>
+      <td class="mono">${p.stock}</td>
+      <td><div style="display:flex;align-items:center;gap:5px">
+        <div class="prog-wrap"><div class="prog-bar" style="width:${p.cf}%;background:#639922"></div></div>
+        <span class="mono" style="color:#639922">${p.cf}%</span>
+      </div></td>
+      <td>${BADGE[p.risk]}</td>
+    </tr>`;
+  }).join('');
+
+  // Segments table
+  const SC={Champions:'#AFA9EC',Leales:'#5DCAA5','En Riesgo':'#EF9F27',Perdidos:'#F09595'};
+  document.getElementById('t-segs').innerHTML=SEGS.map(s=>`<tr>
+    <td><div style="display:flex;align-items:center;gap:7px">
+      <div style="width:7px;height:7px;border-radius:50%;background:${s.color}"></div>
+      <span style="font-weight:500;color:${SC[s.name]}">${s.name}</span>
+    </div></td>
+    <td class="mono">${s.count}</td>
+    <td class="mono">${s.pct}%</td>
+    <td class="mono" style="color:${s.color}">$${s.ltv.toLocaleString('es-AR')}</td>
+    <td class="mono">$${s.ticket.toLocaleString('es-AR')}</td>
+    <td style="color:${s.recency>90?'#A32D2D':s.recency>30?'#854F0B':'#3B6D11'}">hace ${s.recency}d</td>
+  </tr>`).join('');
+
+  // Strategies
+  const sc={Champions:'#7F77DD',Leales:'#1D9E75','En Riesgo':'#BA7517',Perdidos:'#D85A30'};
+  const sb={Champions:'rgba(127,119,221,0.18)',Leales:'rgba(29,158,117,0.18)','En Riesgo':'rgba(186,117,23,0.18)',Perdidos:'rgba(213,90,48,0.18)'};
+  document.getElementById('strategies').innerHTML=SEGS.map(s=>`
+    <div class="strat-item" style="border-left-color:${sc[s.name]};border-top-color:${sb[s.name]};border-right-color:${sb[s.name]};border-bottom-color:${sb[s.name]}">
+      <div class="strat-name" style="color:${sc[s.name]}">${s.name}</div>
+      <div class="strat-text">${s.strategy}</div>
+    </div>`).join('');
+
+  // Inventory table
+  document.getElementById('t-inv').innerHTML=INV.map(p=>`<tr>
+    <td style="font-weight:500">${p.name}</td>
+    <td class="mono">${p.stock} uds</td>
+    <td class="mono" style="color:var(--t2)">${p.daily}/día</td>
+    <td><div style="display:flex;align-items:center;gap:5px">
+      <div class="prog-wrap" style="width:52px"><div class="prog-bar" style="width:${Math.min(100,Math.round(p.days/30*100))}%;background:${p.risk==='critical'?'#E24B4A':p.risk==='warning'?'#EF9F27':p.risk==='overstock'?'#7F77DD':'#639922'}"></div></div>
+      <span class="mono" style="font-size:10px">${p.days>365?'365+':p.days}d</span>
+    </div></td>
+    <td>${BADGE[p.risk]}</td>
+    <td style="color:${AC[p.risk]};font-size:11px">${p.action}</td>
+  </tr>`).join('');
+
+  // Alerts
+  const SC2={critical:{cls:'a-crit',dc:'sd-crit',tc:'#F09595'},warning:{cls:'a-warn',dc:'sd-warn',tc:'#FAC775'},info:{cls:'a-info',dc:'sd-info',tc:'#85B7EB'}};
+  document.getElementById('alerts-list').innerHTML=ALERTS_DATA.map(a=>{
+    const s=SC2[a.sev];
+    return`<div class="alert-item ${s.cls}">
+      <div class="alert-title"><div class="sdot ${s.dc}"></div><span style="color:${s.tc}">${a.title}</span></div>
+      <div class="alert-msg">${a.msg}</div>
+      <div style="margin-top:8px;padding-left:15px">
+        <button onclick="qpText('${a.title.replace(/'/g,"\\'")}')" style="padding:3px 9px;background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:var(--t2);font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif">Consultar a Nebula →</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// 7. NAVIGATION
+// ════════════════════════════════════════════════════════════
+function switchTab(tab){
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(e=>e.classList.remove('active'));
+  const tc=document.getElementById('tab-'+tab);
+  const nb=document.getElementById('nav-'+tab);
+  if(tc)tc.classList.add('active');
+  if(nb)nb.classList.add('active');
+  // Resize charts after reveal
+  setTimeout(()=>Object.values(S.charts).forEach(c=>c&&c.resize&&c.resize()),60);
+}
+
+// ════════════════════════════════════════════════════════════
+// 8. STREAMING API
+// ════════════════════════════════════════════════════════════
+async function callStream(onChunk, onDone){
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':S.apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:900,stream:true,
+      system:SYS,
+      messages:S.history
+    })
+  });
+
+  if(!r.ok){
+    const e=await r.json().catch(()=>({error:{message:'HTTP '+r.status}}));
+    throw new Error(e.error?.message||'Error desconocido');
+  }
+
+  const reader=r.body.getReader(),dec=new TextDecoder();
+  let buf='',full='';
+
+  while(true){
+    const {done,value}=await reader.read();
+    if(done)break;
+    buf+=dec.decode(value,{stream:true});
+    const lines=buf.split('\n');
+    buf=lines.pop()||'';
+    for(const line of lines){
+      if(!line.startsWith('data: '))continue;
+      const data=line.slice(6).trim();
+      if(data==='[DONE]')continue;
+      try{
+        const ev=JSON.parse(data);
+        if(ev.type==='content_block_delta'&&ev.delta?.type==='text_delta'){
+          full+=ev.delta.text;
+          onChunk(cleanText(full));
+        }
+      }catch(_){}
+    }
+  }
+  onDone(full);
+}
+
+// ════════════════════════════════════════════════════════════
+// 9. PARSING
+// ════════════════════════════════════════════════════════════
+function cleanText(t){
+  return t.replace(/\[CHART:[\s\S]*?\]/g,'').replace(/\[VIEW:\w+\]/g,'').trim();
+}
+
+function parseCommands(full){
+  const charts=[],views=[];
+  const cr=/\[CHART:([\s\S]*?)\]/g; let m;
+  while((m=cr.exec(full))!==null){ try{charts.push(JSON.parse(m[1]));}catch(_){} }
+  const vr=/\[VIEW:(\w+)\]/g;
+  while((m=vr.exec(full))!==null){ views.push(m[1]); }
+  return {text:cleanText(full),charts,views};
+}
+
+// ════════════════════════════════════════════════════════════
+// 10. CHAT UI
+// ════════════════════════════════════════════════════════════
+function fmtText(t){
+  if(!t)return'';
+  return t
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/\$([0-9,.]+)/g,'<span class="msg-num">$$$1</span>')
+    .replace(/\n/g,'<br>');
+}
+
+function addMsg(role,text){
+  const c=document.getElementById('chat-msgs');
+  const id='msg-'+(++S.chatN);
+  const isU=role==='user';
+  c.insertAdjacentHTML('beforeend',`
+    <div class="msg-row ${isU?'u':''}" id="${id}">
+      ${isU?'':'<div class="msg-av n">N</div>'}
+      <div class="msg-bub ${isU?'u':'n'}">
+        <div class="msg-txt">${fmtText(text)}</div>
+      </div>
+      ${isU?'<div class="msg-av u">YO</div>':''}
+    </div>`);
+  c.scrollTop=c.scrollHeight;
+  return id;
+}
+
+function addStreaming(){
+  const c=document.getElementById('chat-msgs');
+  const id='msg-'+(++S.chatN);
+  c.insertAdjacentHTML('beforeend',`
+    <div class="msg-row" id="${id}">
+      <div class="msg-av n">N</div>
+      <div class="msg-bub n">
+        <div class="msg-txt"><div class="dots"><span></span><span></span><span></span></div></div>
+      </div>
+    </div>`);
+  c.scrollTop=c.scrollHeight;
+  return id;
+}
+
+function updateStream(id,text){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const t=el.querySelector('.msg-txt');
+  if(t)t.innerHTML=fmtText(text)||'<div class="dots"><span></span><span></span><span></span></div>';
+  el.closest('.chat-msgs').scrollTop=el.closest('.chat-msgs').scrollHeight;
+}
+
+function finalizeMsg(id,full){
+  const {text,charts,views}=parseCommands(full);
+  const el=document.getElementById(id);
+  if(el){
+    const t=el.querySelector('.msg-txt');
+    if(t)t.innerHTML=fmtText(text);
+    charts.forEach(spec=>{
+      const cid='cc-'+(++S.chatN);
+      const w=document.createElement('div');
+      w.className='ic-wrap';
+      w.innerHTML=`<div class="ic-title">${spec.title||'Análisis'}</div><canvas id="${cid}"></canvas>`;
+      el.querySelector('.msg-bub').appendChild(w);
+      setTimeout(()=>{
+        const cfg=specToChartCfg(spec);
+        S.charts[cid]=new Chart(document.getElementById(cid),cfg);
+      },60);
+    });
+    el.closest('.chat-msgs').scrollTop=el.closest('.chat-msgs').scrollHeight;
+  }
+  if(views.length>0) setTimeout(()=>switchTab(views[0]),350);
+}
+
+async function send(){
+  if(S.streaming)return;
+  const inp=document.getElementById('chat-in');
+  const txt=inp.value.trim();
+  if(!txt)return;
+  inp.value='';inp.style.height='auto';
+  addMsg('user',txt);
+  S.history.push({role:'user',content:txt});
+  document.getElementById('qp-bar').style.display='none';
+  S.streaming=true;
+  document.getElementById('send-btn').disabled=true;
+  const msgId=addStreaming();
+  try{
+    await callStream(
+      chunk=>updateStream(msgId,chunk),
+      full=>{
+        finalizeMsg(msgId,full);
+        S.history.push({role:'assistant',content:full});
+      }
+    );
+  }catch(err){
+    finalizeMsg(msgId,`**Error:** ${err.message}\n\nVerificá que tu API key sea válida.`);
+  }finally{
+    S.streaming=false;
+    document.getElementById('send-btn').disabled=false;
+    document.getElementById('chat-in').focus();
+  }
+}
+
+function qp(btn){
+  document.getElementById('chat-in').value=btn.textContent.trim();
+  send();
+}
+
+function qpText(text){
+  document.getElementById('chat-in').value=text;
+  send();
+}
+
+// ════════════════════════════════════════════════════════════
+// 11. AUTH
+// ════════════════════════════════════════════════════════════
+function activateApp(){
+  const k=document.getElementById('api-key-input').value.trim();
+  const err=document.getElementById('m-err');
+  if(!k.startsWith('sk-ant-')){err.style.display='block';return;}
+  err.style.display='none';
+  S.apiKey=k;
+  localStorage.setItem('neb-key',k);
+  document.getElementById('modal').style.display='none';
+  document.getElementById('app').style.display='flex';
+  boot();
+}
+
+function resetKey(){
+  localStorage.removeItem('neb-key');
+  location.reload();
+}
+
+// ════════════════════════════════════════════════════════════
+// 12. BOOT
+// ════════════════════════════════════════════════════════════
+function boot(){
+  renderAll();
+  setTimeout(()=>initCharts(),100);
+  document.getElementById('chat-in').addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}
+  });
+  document.getElementById('chat-in').addEventListener('input',function(){
+    this.style.height='auto';
+    this.style.height=Math.min(this.scrollHeight,80)+'px';
+  });
+  setTimeout(()=>{
+    const welcome=`¡Hola! Soy **Nebula**, tu asesor de negocio IA para Modo Urban 👋
+
+Tengo acceso en tiempo real a todos tus datos: **$1.043.200** en ventas los últimos 30 días, predicciones Prophet para 8 productos y segmentación RFM de 755 clientes.
+
+⚠️ **Situación urgente:** tenés 2 alertas críticas de stock — Jean Slim Fit y Short Deportivo se agotan en 2 y 4 días respectivamente.
+
+¿Empezamos por el inventario crítico o querés un análisis general del mes?`;
+    addMsg('nebula',welcome);
+    S.history.push({role:'assistant',content:'Hola. Soy Nebula, tu asesor IA de Modo Urban. Ingresos $1.043.200 en 30 días. Alerta urgente: Jean Slim Fit y Short Deportivo se agotan en días. ¿Empezamos por el inventario o el análisis general?'});
+  },450);
+}
+
+// ── CHECK SAVED KEY ────────────────────────────────────────
+window.addEventListener('load',()=>{
+  const saved=localStorage.getItem('neb-key');
+  if(saved&&saved.startsWith('sk-ant-')){
+    S.apiKey=saved;
+    document.getElementById('api-key-input').value=saved;
+    document.getElementById('modal').style.display='none';
+    document.getElementById('app').style.display='flex';
+    boot();
+  }
+});
+
+// Allow Enter in modal
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('api-key-input').addEventListener('keydown',e=>{
+    if(e.key==='Enter')activateApp();
+  });
+});
+</script>
+</body>
+</html>
